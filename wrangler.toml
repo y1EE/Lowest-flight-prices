@@ -6,7 +6,7 @@ pages_build_output_dir = "."
 # 把下面的 database_id 換成你自己的，binding 保持 DB 不要改（程式碼裡固定用 env.DB）。
 # 這一段拿掉也沒關係——沒設定就等於「有 Token、沒有 D1」，程式會自動走安全鎖定。
 #
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "flight-watch-db"
-# database_id = "貼上你的 D1 database id"
+[[d1_databases]]
+binding = "DB"
+database_name = "flight-watch-db"
+database_id = "59adfc72-c56a-46f3-b0b3-e760f095c80f"
