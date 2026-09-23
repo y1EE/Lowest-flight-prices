@@ -1,0 +1,64 @@
+name: 票價守望 - 每日撿便宜掃描與核對
+
+on:
+  schedule:
+    - cron: "10 8 * * *"
+  workflow_dispatch:
+    inputs:
+      debug_verify:
+        description: "驗證步驟開 --debug（存每筆截圖，方便排查 Google Flights 版面問題）"
+        type: boolean
+        default: false
+
+jobs:
+  scan-and-verify:
+    runs-on: ubuntu-latest
+    env:
+      SITE_URL: ${{ vars.SITE_URL }}
+      SCAN_TOKEN: ${{ secrets.SCAN_TOKEN }}
+    steps:
+      - name: 檢查必要設定
+        run: |
+          if [ -z "$SITE_URL" ]; then echo "還沒設定 repo 的 SITE_URL 變數，見 README「設定每天自動掃描」。"; exit 1; fi
+          if [ -z "$SCAN_TOKEN" ]; then echo "還沒設定 repo 的 SCAN_TOKEN secret。"; exit 1; fi
+
+      - name: 呼叫 /api/scan（找便宜）
+        run: |
+          curl -sS --fail \
+            "$SITE_URL/api/scan?budget=30" \
+            -H "Authorization: Bearer $SCAN_TOKEN" \
+            | tee scan-result.json
+      - name: 顯示這次掃描結果摘要
+        run: |
+          python3 -c "
+          import json
+          d = json.load(open('scan-result.json'))
+          print('這次檢查了', len(d.get('checked', [])), '條航線／月份')
+          print('新找到', len(d.get('deals', [])), '筆便宜機票')
+          print('今天用量：', d.get('usageStart'), '->', d.get('usageEnd'))
+          if d.get('notified'): print('通知：', d.get('notified'))
+          " || cat scan-result.json
+
+      - name: 準備 Node（驗證步驟要用）
+        if: success()
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 安裝相依套件
+        if: success()
+        run: npm install --no-save playwright
+      - name: 安裝 Chromium（Playwright 用）
+        if: success()
+        run: npx playwright install --with-deps chromium
+      - name: 用瀏覽器核對剛剛找到的便宜機票
+        if: success()
+        run: node scripts/verify-deals.mjs --limit=5 ${{ inputs.debug_verify && '--debug' || '' }}
+        continue-on-error: true
+
+      - name: 上傳除錯截圖
+        if: inputs.debug_verify
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-debug-screenshots
+          path: verify-debug/
+          if-no-files-found: ignore
