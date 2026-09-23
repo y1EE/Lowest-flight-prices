@@ -17,6 +17,9 @@ jobs:
       SITE_URL: ${{ vars.SITE_URL }}
       SCAN_TOKEN: ${{ secrets.SCAN_TOKEN }}
     steps:
+      - name: 取得程式碼
+        uses: actions/checkout@v4
+
       - name: 檢查必要設定
         run: |
           if [ -z "$SITE_URL" ]; then echo "還沒設定 repo 的 SITE_URL 變數，見 README「設定每天自動掃描」。"; exit 1; fi
